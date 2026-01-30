@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Cleaner Pro AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --dark-bg: #1a1a2e;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --text-light: #f1f1f1;
+            --accent-color: #0fcece;
+        }
+
+        body {
+            background: var(--dark-bg);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .hero-header {
+            background: var(--primary-gradient);
+            padding: 3rem 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 2rem;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: 100%;
+            transition: transform 0.2s;
+        }
+
+        .file-upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.2);
+            transition: 0.3s;
+        }
+        .file-upload-area:hover { border-color: var(--accent-color); background: rgba(15, 206, 206, 0.1); }
+
+        .btn-grad {
+            background: var(--secondary-gradient);
+            border: none;
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+        }
+        .btn-grad:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .preview-box {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            border: 1px solid #30363d;
+            color: #27c93f;
+        }
+
+        .progress-bar { background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); transition: width 0.3s; }
+        .stat-num { font-size: 2rem; font-weight: bold; }
+        .stat-lbl { font-size: 0.8rem; text-transform: uppercase; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+    <header class="hero-header text-center">
+        <h1 class="fw-bold"><i class="fas fa-magic me-2"></i> PDF to One-Liner AI</h1>
+        <p class="opacity-75 mb-0">Engine v3.0: Enhanced Text Parsing</p>
+    </header>
+
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="glass-card">
+                    <h4 class="mb-3"><i class="fas fa-upload me-2"></i> Upload PDF</h4>
+                    <div class="file-upload-area" id="dropArea" onclick="document.getElementById('pdfInput').click()">
+                        <i class="fas fa-file-pdf fa-3x mb-3 text-danger"></i>
+                        <h6 id="fileName">Click to Upload PDF</h6>
+                        <input type="file" id="pdfInput" accept=".pdf" class="d-none">
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="form-label text-muted small">OPTIONS</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cleanHindi" checked>
+                                <label class="form-check-label">Remove Hindi</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cleanGarbage" checked>
+                                <label class="form-check-label">Clean Garbage</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-grad mt-4" id="processBtn" disabled onclick="startProcessing()">
+                        Process PDF
+                    </button>
+                </div>
+
+                <div class="glass-card mt-3 d-none" id="statsPanel">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="stat-num" id="statPages">0</div>
+                            <div class="stat-lbl">Pages</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-num" id="statQs">0</div>
+                            <div class="stat-lbl">Questions</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-num text-success" id="statTime">0s</div>
+                            <div class="stat-lbl">Time</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="glass-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="fas fa-terminal me-2"></i> Live Console</h5>
+                        <span class="badge bg-secondary" id="statusBadge">Idle</span>
+                    </div>
+                    
+                    <div class="preview-box" id="consoleLog">
+                        <div class="text-muted text-center mt-5">System Ready.</div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span id="progressText">0%</span>
+                        </div>
+                        <div class="progress" style="height: 6px; background: rgba(255,255,255,0.1);">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card mt-3 text-center d-none" id="downloadCard">
+                    <h4 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i> Success!</h4>
+                    <a id="downloadLink" class="btn btn-grad">
+                        <i class="fas fa-download me-2"></i> Download Cleaned DOCX
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SETUP ---
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const pdfInput = document.getElementById('pdfInput');
+        const fileName = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        const consoleLog = document.getElementById('consoleLog');
+        const progressBar = document.getElementById('progressBar');
+        const downloadCard = document.getElementById('downloadCard');
+        const statsPanel = document.getElementById('statsPanel');
+
+        let currentFile = null;
+        let startTime = 0;
+
+        // --- 2. HELPERS ---
+        function log(msg, type='info') {
+            const line = document.createElement('div');
+            line.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            line.style.padding = '2px 0';
+            if(type==='error') line.style.color = '#ff5f56';
+            if(type==='success') line.style.color = '#00f2fe';
+            line.innerText = `> ${msg}`;
+            consoleLog.appendChild(line);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // --- 3. CLEANING LOGIC ---
+        function isGarbageLine(text) {
+            if(/[ÿšâ£¤~¡¢¥§©®°±²³µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþ]/.test(text)) return true;
+            if(/(ke‚er|ke‚e|ceW|ngF&|nw~|mLeeve|peelee)/.test(text)) return true;
+            return false;
+        }
+
+        function advancedClean(text) {
+            if (!text) return "N/A";
+            const removeHindi = document.getElementById('cleanHindi').checked;
+            const removeGarbage = document.getElementById('cleanGarbage').checked;
+
+            if (text.includes('/')) text = text.split('/')[0];
+            
+            if (removeHindi) text = text.replace(/[\u0900-\u097F]+/g, '');
+            
+            if (removeGarbage) {
+                text = text.replace(/[ÿšâ£¤~¡¢¥§©®°±²³µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþ]/g, '');
+                text = text.replace(/\s+\d{1,2}\s*$/, '');
+            }
+
+            if (text.includes('?')) {
+                const parts = text.split('?');
+                if (parts.length > 1 && /(mLeeve|peelee|nw|Lee|mes)/.test(parts[1])) text = parts[0] + "?";
+            }
+            
+            return text.replace(/\s+/g, ' ').trim().replace(/^[\s\.\-]+/, '');
+        }
+
+        // --- 4. FILE HANDLING ---
+        pdfInput.addEventListener('change', (e) => {
+            if(e.target.files[0]) {
+                currentFile = e.target.files[0];
+                fileName.innerHTML = `<i class="fas fa-check text-success"></i> ${currentFile.name}`;
+                processBtn.disabled = false;
+                consoleLog.innerHTML = ''; 
+                log("File loaded. Ready to process.");
+            }
+        });
+
+        // --- 5. MAIN ENGINE ---
+        async function startProcessing() {
+            processBtn.disabled = true;
+            statsPanel.classList.remove('d-none');
+            downloadCard.classList.add('d-none');
+            consoleLog.innerHTML = '';
+            startTime = Date.now();
+            
+            log("Initializing Engine...");
+
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const typedArray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+                    
+                    document.getElementById('statPages').innerText = pdf.numPages;
+                    log(`PDF Structure Validated. ${pdf.numPages} Pages.`);
+
+                    let fullText = "";
+                    
+                    // --- STEP 1: EXTRACT (The Fix: Join with \n, not space) ---
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        
+                        // CRITICAL FIX: Join with "\n" to preserve line structure for Regex
+                        const strings = content.items.map(item => item.str);
+                        fullText += strings.join("\n") + "\n";
+                        
+                        if(i % 10 === 0) {
+                            const pct = Math.round((i/pdf.numPages)*40);
+                            progressBar.style.width = pct + "%";
+                            log(`Scanning Page ${i}...`);
+                        }
+                    }
+
+                    log("Extraction Done. Analyzing Layout...");
+
+                    // --- STEP 2: PARSE ---
+                    // Improved Regex: Handles "1.", "01.", "1 ." and ensures it catches start of lines
+                    // We replace identified questions with a unique delimiter ###SPLIT###
+                    const splitText = fullText.replace(/(\n|^)\s*(\d{1,3}[\.\)])/g, "\n###SPLIT###$2");
+                    const blocks = splitText.split("###SPLIT###");
+                    
+                    log(`Identified ${blocks.length} text blocks.`);
+
+                    const docChildren = [];
+                    docChildren.push(new docx.Paragraph({
+                        text: "English One-Liners",
+                        heading: docx.HeadingLevel.HEADING_1,
+                        spacing: { after: 300 }
+                    }));
+
+                    let qCount = 0;
+
+                    for (let i = 0; i < blocks.length; i++) {
+                        const rawBlock = blocks[i];
+                        if (!rawBlock || rawBlock.length < 10) continue;
+
+                        // Check for Answer Pattern
+                        const ansMatch = rawBlock.match(/Ans[\.\s:]+\(?([a-d])\)?/i);
+
+                        if (ansMatch) {
+                            const correctLetter = ansMatch[1].toLowerCase();
+                            const contentBeforeAns = rawBlock.substring(0, ansMatch.index);
+                            
+                            // Split into lines
+                            const lines = contentBeforeAns.split('\n');
+                            let qParts = [], optParts = [], examTag = "MP Police Exam";
+                            let inOptions = false;
+
+                            for (let line of lines) {
+                                line = line.trim();
+                                if(!line) continue;
+
+                                // Exam Tag Detection
+                                if (/(MP Police|Constable|Shift|Exam \d{4}|Recruitment)/i.test(line)) {
+                                    examTag = line; continue;
+                                }
+
+                                // Option Detection (a) or (A)
+                                const optMatch = line.split(/(\([a-d]\))/i);
+                                if(optMatch.length > 1) {
+                                    inOptions = true;
+                                    // Part before (a) might be question text
+                                    if(optMatch[0].trim() && !isGarbageLine(optMatch[0])) qParts.push(optMatch[0]);
+                                    optParts.push(optMatch.slice(1).join(""));
+                                } else if (inOptions) {
+                                    optParts.push(line);
+                                } else {
+                                    if(!isGarbageLine(line)) qParts.push(line);
+                                }
+                            }
+
+                            // Clean Data
+                            const cleanQ = advancedClean(qParts.join(" "));
+                            const cleanOpts = optParts.join(" ");
+                            let cleanAns = "N/A";
+
+                            // Extract Answer Text
+                            const targetRex = new RegExp(`\\(${correctLetter}\\)\\s*([^\\(\\)]+)`, "i");
+                            const tMatch = cleanOpts.match(targetRex);
+                            if(tMatch) cleanAns = advancedClean(tMatch[1]);
+
+                            // Add to Doc
+                            if (cleanQ.length > 5 && cleanAns !== "N/A") {
+                                docChildren.push(
+                                    new docx.Paragraph({
+                                        children: [
+                                            new docx.TextRun({ text: "• ", bold: true }),
+                                            new docx.TextRun({ text: `${cleanQ} – `, size: 22 }),
+                                            new docx.TextRun({ text: `${cleanAns} `, bold: true, size: 22 }),
+                                            new docx.TextRun({ text: `(${examTag})`, italics: true, size: 20, color: "888888" })
+                                        ],
+                                        spacing: { after: 120 }
+                                    })
+                                );
+                                qCount++;
+                            }
+                        }
+
+                        // Progress Update (40% -> 90%)
+                        if (i % 50 === 0) {
+                            const pct = 40 + Math.round((i/blocks.length)*50);
+                            progressBar.style.width = pct + "%";
+                        }
+                    }
+
+                    // --- STEP 3: FINISH ---
+                    document.getElementById('statQs').innerText = qCount;
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                    document.getElementById('statTime').innerText = duration + "s";
+
+                    if(qCount === 0) {
+                        log("WARNING: 0 Questions found. Check file format.", 'error');
+                        alert("No questions found. The PDF format might be unsupported.");
+                    } else {
+                        log(`Success! ${qCount} Questions Processed.`, 'success');
+                        
+                        const doc = new docx.Document({ sections: [{ children: docChildren }] });
+                        const blob = await docx.Packer.toBlob(doc);
+                        const url = URL.createObjectURL(blob);
+                        
+                        downloadLink.href = url;
+                        downloadLink.download = `Cleaned_Notes_${Date.now()}.docx`;
+                        
+                        progressBar.style.width = "100%";
+                        downloadCard.classList.remove('d-none');
+                    }
+                    
+                    processBtn.disabled = false;
+
+                } catch (err) {
+                    console.error(err);
+                    log(`Critical Error: ${err.message}`, 'error');
+                    processBtn.disabled = false;
+                }
+            };
+            reader.readAsArrayBuffer(currentFile);
+        }
+    </script>
+</body>
+</html>
