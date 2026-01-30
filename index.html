@@ -201,8 +201,11 @@
 
         // --- 3. CLEANING LOGIC ---
         function isGarbageLine(text) {
+            // Expanded garbage detection
             if(/[ÿšâ£¤~¡¢¥§©®°±²³µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþ]/.test(text)) return true;
-            if(/(ke‚er|ke‚e|ceW|ngF&|nw~|mLeeve|peelee)/.test(text)) return true;
+            if(/[\u2000-\u206F\u2E00-\u2E7F\u2028\u2029\u25A0-\u25FF]/.test(text)) return true; // More Unicode junk
+            if(/(ke‚er|ke‚e|ceW|ngF&|nw~|mLeeve|peelee|Deueerjepehegj|efke‚leves|cebefoj|efyeKejs|n<e&JeOe&ve|Deheves|YeeF&)/.test(text)) return true;
+            if(/^[^a-zA-Z0-9]+$/.test(text)) return true; // Only symbols
             return false;
         }
 
@@ -212,19 +215,30 @@
             const removeGarbage = document.getElementById('cleanGarbage').checked;
 
             if (text.includes('/')) text = text.split('/')[0];
-            
+
+            // Remove Hindi if selected
             if (removeHindi) text = text.replace(/[\u0900-\u097F]+/g, '');
-            
+
             if (removeGarbage) {
+                // Remove known garbage characters
                 text = text.replace(/[ÿšâ£¤~¡¢¥§©®°±²³µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþ]/g, '');
+                // Remove more non-printable and box-drawing chars
+                text = text.replace(/[\u2000-\u206F\u2E00-\u2E7F\u2028\u2029\u25A0-\u25FF]/g, '');
+                // Remove trailing numbers (like question numbers at end)
                 text = text.replace(/\s+\d{1,2}\s*$/, '');
+                // Remove any non-printable except basic Latin and Devanagari
+                text = text.replace(/[^\x20-\x7E\u0900-\u097F]/g, '');
             }
+
+            // Normalize blanks: replace any sequence of underscores, dashes, or long spaces with standard blank
+            text = text.replace(/[_\-–—\s]{3,}/g, '______');
 
             if (text.includes('?')) {
                 const parts = text.split('?');
                 if (parts.length > 1 && /(mLeeve|peelee|nw|Lee|mes)/.test(parts[1])) text = parts[0] + "?";
             }
-            
+
+            // Final cleanup: collapse whitespace, trim, remove leading dots/dashes
             return text.replace(/\s+/g, ' ').trim().replace(/^[\s\.\-]+/, '');
         }
 
